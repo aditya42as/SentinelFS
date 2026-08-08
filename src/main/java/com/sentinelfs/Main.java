@@ -1,8 +1,10 @@
 package com.sentinelfs;
 
 import java.nio.file.Path;
+import java.util.List;
 
-import com.sentinelfs.core.HashingUnit;
+import com.sentinelfs.core.FileRecord;
+import com.sentinelfs.integrity.ScanFiles;
 
 public class Main {
 
@@ -10,13 +12,14 @@ public class Main {
         System.out.println("SentinelFS starting up...");
 
         try {
-            
-            String hash = HashingUnit.hashFile(Path.of("pom.xml"));
-            System.out.println("SHA-256 of pom.xml: " + hash);
-        } 
-        catch (Exception e) {
-
-            System.out.println("Something went wrong while hashing the file:");
+            System.out.println("Scanning: " + Path.of("src").toAbsolutePath());
+            List<FileRecord> records = ScanFiles.scanDir(Path.of("src"));
+            System.out.println("Scanned " + records.size() + " files:");
+            for (FileRecord record : records) {
+                System.out.println(record);
+            }
+        } catch (Exception e) {
+            System.out.println("Scan failed:");
             e.printStackTrace();
         }
     }
