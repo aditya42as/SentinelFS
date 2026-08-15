@@ -1,6 +1,8 @@
 package com.sentinelfs.integrity;
 
 import com.sentinelfs.core.FileRecord;
+import com.sentinelfs.alert.AlertManager;
+import com.sentinelfs.alert.ChangeType;
 
 import java.util.*;
 
@@ -48,5 +50,17 @@ public class IntegrityChecker {
             }
         }
         return result;
+    }
+
+    public static void reportAlerts(ComparisonResult result, AlertManager alertManager) {
+        for(FileRecord r : result.modified) {
+            alertManager.fireAlert(ChangeType.MODIFIED, r);
+        }
+        for(FileRecord r : result.added) {
+            alertManager.fireAlert(ChangeType.ADDED, r);
+        }
+        for(FileRecord r : result.deleted) {
+            alertManager.fireAlert(ChangeType.DELETED, r);
+        }
     }
 }
