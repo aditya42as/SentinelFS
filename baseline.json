@@ -1,0 +1,38 @@
+[
+  {
+    "path": "src\\main\\java\\com\\sentinelfs\\baseline\\BaselineStore.java",
+    "hash": "ed923fa8b3926d32994b38ebd3b1332829f80746c9057b1fd76aff10261f9aa6",
+    "sizeofFile": 904,
+    "lastModified": 1786810031973
+  },
+  {
+    "path": "src\\main\\java\\com\\sentinelfs\\core\\FileRecord.java",
+    "hash": "2fa6b6889f06743f2317d31855ed5aefbc27665a109bd1cdba996719facb4272",
+    "sizeofFile": 907,
+    "lastModified": 1786192584621
+  },
+  {
+    "path": "src\\main\\java\\com\\sentinelfs\\core\\HashingUnit.java",
+    "hash": "48414b2f833d0b15e795696a3d8e5d541a83e73cd972a23ae5728c480b2608f7",
+    "sizeofFile": 1535,
+    "lastModified": 1786098758760
+  },
+  {
+    "path": "src\\main\\java\\com\\sentinelfs\\integrity\\IntegrityChecker.java",
+    "hash": "7139436b48f0f28fe8d1b747edd1a4450284948d79e722d7c5223734d9a6b66d",
+    "sizeofFile": 1754,
+    "lastModified": 1786809665228
+  },
+  {
+    "path": "src\\main\\java\\com\\sentinelfs\\integrity\\ScanFiles.java",
+    "hash": "15c3af23e01b0d8722acc61a34955affcadb8a8c9f4b27be70afbf47b328b62c",
+    "sizeofFile": 1479,
+    "lastModified": 1786192955211
+  },
+  {
+    "path": "src\\main\\java\\com\\sentinelfs\\Main.java",
+    "hash": "1330d6dca1fec67d9c4ead92ba7d2d5b445ea96d8d054c51ea995c6e6e239beb",
+    "sizeofFile": 1464,
+    "lastModified": 1786810062004
+  }
+]
