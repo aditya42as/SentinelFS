@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 
 import com.sentinelfs.core.FileRecord;
 import com.sentinelfs.core.HashingUnit;
-
+//testing integritychecker.java by adding this comment
 public class ScanFiles {
 
     private static FileRecord buildRecord(Path filePath) throws IOException, NoSuchAlgorithmException {

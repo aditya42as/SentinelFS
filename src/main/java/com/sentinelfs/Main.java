@@ -8,6 +8,7 @@ import com.sentinelfs.core.FileRecord;
 import com.sentinelfs.integrity.ScanFiles;
 import com.sentinelfs.integrity.IntegrityChecker;
 import com.sentinelfs.integrity.ScanFiles;
+import com.sentinelfs.logbackup.LogMonitor;
 
 public class Main {
 
@@ -33,5 +34,6 @@ public class Main {
         System.out.println("Added: " + result.added.size());
         System.out.println("Deleted: " + result.deleted.size());
         System.out.println("Unchanged: " + result.unchanged.size());
+        LogMonitor.checkLogs(Path.of("src"));
     }
 }
