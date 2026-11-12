@@ -1,19 +1,22 @@
 package com.sentinelfs.alert;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-import com.sentinelfs.core.FileRecord;
-
+/** Observer-pattern hub: detection code fires events, any number of listeners react. Thread-safe. */
 public class AlertManager {
-    private final List<AlertListener> listeners = new ArrayList<>();
-    public void addListener(AlertListener listener) {
-        listeners.add(listener);
-    }
+    private final List<AlertListener> listeners = new CopyOnWriteArrayList<>();
 
-    public void fireAlert(ChangeType type, FileRecord record) {
-        for(AlertListener listener : listeners) {
-            listener.onAlert(type, record);
+    public void addListener(AlertListener listener) { listeners.add(listener); }
+    public void removeListener(AlertListener listener) { listeners.remove(listener); }
+
+    public void fireAlert(AlertEvent event) {
+        for (AlertListener l : listeners) {
+            try {
+                l.onAlert(event);
+            } catch (RuntimeException e) {
+                System.err.println("Alert listener failed: " + e);
+            }
         }
     }
 }

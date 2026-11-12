@@ -6,141 +6,120 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Scanner;
 
-import com.sentinelfs.alert.AlertManager;
+import com.sentinelfs.alert.AlertListener;
 import com.sentinelfs.alert.ConsoleAlertListener;
-import com.sentinelfs.alert.FileLogListener;
-import com.sentinelfs.baseline.BaselineStore;
-import com.sentinelfs.core.FileRecord;
+import com.sentinelfs.config.FolderKind;
+import com.sentinelfs.config.WatchedFolder;
 import com.sentinelfs.integrity.IntegrityChecker;
-import com.sentinelfs.integrity.ScanFiles;
-import com.sentinelfs.watch.FileWatcher;
+import com.sentinelfs.service.MonitorService;
+import com.sentinelfs.service.ScanResult;
 
-
+/** Text front-end on top of the same engine the GUI uses (handy for servers / SSH). */
 public class ConsoleController {
-    private final Scanner scanner = new Scanner(System.in);
-    private final AlertManager alertManager = new AlertManager();
+    private final Scanner in = new Scanner(System.in);
+    private final MonitorService service;
 
-    private Path monitoredDir = null;
-    private Path baselineFile = null;
-
-    public ConsoleController() {
-        alertManager.addListener(new ConsoleAlertListener());
-        alertManager.addListener(new FileLogListener(Path.of("alerts.log")));
+    public ConsoleController(MonitorService service) {
+        this.service = service;
     }
 
     public void run() {
-        System.out.println("Sentinel FS");
+        System.out.println("SentinelFS (console mode)");
         boolean running = true;
-        while(running) {
-            printMenu();
-            String choice = scanner.nextLine().trim();
-
-            switch(choice) {
-                case "1" -> addMonitoredFolder();
-                case "2" -> runIntegrityCheck();
-                case "3" -> approveBaseline();
-                case "4" -> startRealTimeMonitoring();
-                case "5" -> running = false;
-                default -> System.out.println("Not a valid option. Try Again");
-
+        while (running) {
+            System.out.println("\n1. Add a folder to protect");
+            System.out.println("2. List protected folders");
+            System.out.println("3. Run integrity check");
+            System.out.println("4. Accept current state as new baseline");
+            System.out.println("5. Start real-time monitoring (press Enter to stop)");
+            System.out.println("6. Exit");
+            System.out.print("Choose an option: ");
+            if (!in.hasNextLine()) break;
+            switch (in.nextLine().trim()) {
+                case "1" -> addFolder();
+                case "2" -> list();
+                case "3" -> check();
+                case "4" -> approve();
+                case "5" -> monitor();
+                case "6" -> running = false;
+                default -> System.out.println("Not a valid option.");
             }
         }
-        System.out.println("Exiting");
-    }
-    private void printMenu() {
-        System.out.println("\n1. Add a folder to monitor");
-        System.out.println("2. Run Integrity Check");
-        System.out.println("3. Approve current state as new baseline");
-        System.out.println("4. Start Real Time Monitoring(30 sec demo)");
-        System.out.println("5. Exit");
-        System.out.println("Choose an Option: ");
-    }
-    private void addMonitoredFolder() {
-        System.out.print("Enter path folder to monitor: ");
-        String input = scanner.nextLine().trim();
-        Path path = Path.of(input);
-
-        if(!Files.exists(path)) {
-            System.out.println("That path doesn't exist.");
-            return;
-        }
-        monitoredDir = path;
-        baselineFile = Path.of("baseline_" + path.getFileName() + ".json");
-        System.out.println("Now Monitoring: " + monitoredDir);
+        service.close();
+        System.out.println("Bye.");
     }
 
-    private void runIntegrityCheck() {
-        if (monitoredDir == null) {
-            System.out.println("No folder set yet — choose option 1 first.");
-            return;
-        }
-
+    private void addFolder() {
+        System.out.print("Folder path: ");
+        Path p = Path.of(in.nextLine().trim());
+        System.out.print("Type [1=General, 2=Logs, 3=Backups] (default 1): ");
+        String t = in.nextLine().trim();
+        FolderKind kind = t.equals("2") ? FolderKind.LOG : t.equals("3") ? FolderKind.BACKUP : FolderKind.GENERAL;
         try {
-            List<FileRecord> current = ScanFiles.scanDir(monitoredDir);
-
-            if (!Files.exists(baselineFile)) {
-                System.out.println("No baseline exists yet — creating one now.");
-                BaselineStore.save(current, baselineFile);
-                System.out.println("Baseline saved with " + current.size() + " files.");
-                return;
-            }
-
-            List<FileRecord> baseline = BaselineStore.load(baselineFile);
-            IntegrityChecker.ComparisonResult result = IntegrityChecker.compare(baseline, current);
-
-            System.out.println("Modified: " + result.modified.size());
-            System.out.println("Added: " + result.added.size());
-            System.out.println("Deleted: " + result.deleted.size());
-            System.out.println("Unchanged: " + result.unchanged.size());
-
-            IntegrityChecker.reportAlerts(result, alertManager);
-
+            WatchedFolder f = service.addFolder(p, kind);
+            ScanResult r = service.scan(f, false, null, null);
+            System.out.println("Protecting " + f + " - baseline of " + r.current.size() + " files created.");
+        } catch (IOException e) {
+            System.out.println("Could not add folder: " + e.getMessage());
         }
-        catch (IOException e) {
+    }
+
+    private void list() {
+        List<WatchedFolder> fs = service.folders();
+        if (fs.isEmpty()) System.out.println("No folders yet.");
+        for (int i = 0; i < fs.size(); i++) {
+            WatchedFolder f = fs.get(i);
+            System.out.printf("%d. %s  [%s]  %d files  - %s%n", i + 1, f.pathString(), f.kind(), f.fileCount(), f.status());
+        }
+    }
+
+    private WatchedFolder pick() {
+        list();
+        if (service.folders().isEmpty()) return null;
+        System.out.print("Folder number: ");
+        try {
+            int i = Integer.parseInt(in.nextLine().trim()) - 1;
+            return service.folders().get(i);
+        } catch (RuntimeException e) {
+            System.out.println("Invalid choice.");
+            return null;
+        }
+    }
+
+    private void check() {
+        WatchedFolder f = pick();
+        if (f == null) return;
+        try {
+            ScanResult r = service.scan(f, true, null, null);
+            if (r.baselineCreated) { System.out.println("No baseline existed - created one (" + r.current.size() + " files)."); return; }
+            IntegrityChecker.ComparisonResult c = r.comparison;
+            System.out.printf("Modified: %d  Added: %d  Deleted: %d  Unchanged: %d%n",
+                    c.modified.size(), c.added.size(), c.deleted.size(), c.unchanged.size());
+        } catch (IOException e) {
             System.out.println("Scan failed: " + e.getMessage());
         }
     }
 
-    private void approveBaseline() {
-        if(monitoredDir == null) {
-            System.out.println("No folder set yet - choose option 1 first.");
-            return;
-        }
-
+    private void approve() {
+        WatchedFolder f = pick();
+        if (f == null) return;
         try {
-            List<FileRecord> current = ScanFiles.scanDir(monitoredDir);
-            BaselineStore.save(current, baselineFile);
-            System.out.println("Baseline updated with current state (" + current.size() + " files.");    
-        } 
-        catch (IOException e) {
+            int n = service.createBaseline(f, null, null).size();
+            System.out.println("Baseline updated (" + n + " files).");
+        } catch (IOException e) {
             System.out.println("Could not update baseline: " + e.getMessage());
         }
     }
 
-    private void startRealTimeMonitoring() {
-        if(monitoredDir == null) {
-            System.out.println("No folder set yet - choose option 1 first.");
-            return;
-        }
-        FileWatcher watcher = new FileWatcher(monitoredDir, alertManager);
-        Thread watchThread = new Thread(() -> {
-            try {
-                watcher.startWatching();
-            } 
-            catch (IOException e) {
-                System.out.println("Watcher failed: " + e.getMessage());
-            }
-        });
-        watchThread.setDaemon(true);
-        watchThread.start();
-
-        System.out.println("Watching for 30 seconds - try editing a file now.");
-        try {
-            Thread.sleep(30000);
-        } 
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        System.out.println("Demo window closed. Returning to menu.");
+    private void monitor() {
+        if (service.folders().isEmpty()) { System.out.println("Add a folder first."); return; }
+        AlertListener console = new ConsoleAlertListener();
+        service.alerts().addListener(console);
+        service.startMonitoring();
+        System.out.println("Monitoring " + service.folders().size() + " folder(s). Press Enter to stop.");
+        in.nextLine();
+        service.stopMonitoring();
+        service.alerts().removeListener(console);
+        System.out.println("Stopped.");
     }
 }

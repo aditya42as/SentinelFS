@@ -1,11 +1,15 @@
 package com.sentinelfs.alert;
 
-import com.sentinelfs.core.FileRecord;
-//testing
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 public class ConsoleAlertListener implements AlertListener {
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     @Override
-    public void onAlert(ChangeType type, FileRecord record) {
-        System.out.println("[ALERT] " + type + ": " + record.getPath());
+    public void onAlert(AlertEvent e) {
+        String t = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(e.getTime()), ZoneId.systemDefault()).format(FMT);
+        System.out.println("[" + t + "] [" + e.getSeverity() + "] " + e.getType() + ": " + e.getPath());
     }
 }
